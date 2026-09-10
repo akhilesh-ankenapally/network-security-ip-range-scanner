@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network Security IP Range Scanner | College Prototype</title>
+  <meta name="description" content="Network Security IP Range Scanner prototype for active host discovery, ping sweeps, and network mapping.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="6"></circle>
+            <circle cx="12" cy="12" r="2"></circle>
+            <line x1="12" y1="2" x2="12" y2="4"></line>
+            <line x1="12" y1="20" x2="12" y2="22"></line>
+            <line x1="2" y1="12" x2="4" y2="12"></line>
+            <line x1="20" y1="12" x2="22" y2="12"></line>
+          </svg>
+        </div>
+        <div>
+          <div class="badge-pill">Project 3 • Prototype</div>
+          <h1 class="brand-title">Network Security IP Range Scanner</h1>
+          <p class="brand-subtitle">Host Discovery & Subnet Ping Sweep Utility</p>
+        </div>
+      </div>
+      <div class="system-status">
+        <span class="status-dot online"></span>
+        <span>ICMP Engine Ready</span>
+      </div>
+    </header>
+
+    <!-- Main Scanner Panel -->
+    <main class="scanner-main">
+      <section class="card input-card">
+        <form id="scan-form">
+          <div class="form-row">
+            <div class="input-group">
+              <label for="ip-range-input" class="input-label">
+                <span>Target IP Range or CIDR Subnet</span>
+                <span class="label-hint">e.g., 192.168.1.1-20 or 192.168.1.0/28</span>
+              </label>
+              <div class="input-wrapper">
+                <span class="input-icon">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+                    <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+                    <line x1="6" y1="6" x2="6.01" y2="6"></line>
+                    <line x1="6" y1="18" x2="6.01" y2="18"></line>
+                  </svg>
+                </span>
+                <input 
+                  type="text" 
+                  id="ip-range-input" 
+                  name="target" 
+                  placeholder="Enter IP Range (e.g. 127.0.0.1-5, 192.168.1.1-15, 192.168.1.0/29)" 
+                  value="127.0.0.1-5" 
+                  required 
+                  autocomplete="off"
+                  spellcheck="false"
+                >
+                <button type="button" id="clear-btn" class="clear-btn" title="Clear input">&times;</button>
+              </div>
+            </div>
+            <button type="submit" id="scan-btn" class="btn btn-primary">
+              <span class="btn-spinner" id="btn-spinner" hidden></span>
+              <span class="btn-icon" id="btn-icon">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+              </span>
+              <span id="btn-text">Start Scan</span>
+            </button>
+          </div>
+
+          <!-- Quick Presets for 3-minute Demo -->
+          <div class="presets-row">
+            <span class="presets-label">Demo Presets:</span>
+            <button type="button" class="preset-chip" data-preset="127.0.0.1-5">Localhost (127.0.0.1-5)</button>
+            <button type="button" class="preset-chip" data-preset="192.168.1.1-10">LAN Range (192.168.1.1-10)</button>
+            <button type="button" class="preset-chip" data-preset="192.168.1.0/29">Subnet (/29)</button>
+            <button type="button" class="preset-chip" data-preset="10.0.0.1-6">Gateway (10.0.0.1-6)</button>
+            <button type="button" class="preset-chip" data-preset="192.0.2.1-4">Test Net (Inactive)</button>
+          </div>
+        </form>
+
+        <!-- Error / Info Notification Banner -->
+        <div id="error-banner" class="alert-banner alert-danger" hidden>
+          <div class="alert-icon">⚠️</div>
+          <div class="alert-content" id="error-message">Invalid IP range specified.</div>
+          <button type="button" class="alert-dismiss" id="dismiss-error">&times;</button>
+        </div>
+      </section>
+
+      <!-- Scanning Progress Indicator -->
+      <section id="scanning-progress" class="card progress-card" hidden>
+        <div class="progress-header">
+          <div class="radar-pulse"></div>
+          <div>
+            <h3 class="progress-title">Performing ICMP Ping Sweep...</h3>
+            <p class="progress-subtitle" id="progress-target-text">Scanning targets</p>
+          </div>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar-indeterminate"></div>
+        </div>
+      </section>
+
+      <!-- Summary Section -->
+      <section id="summary-section" class="summary-grid">
+        <div class="summary-card card-total">
+          <div class="card-icon total-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+              <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+              <line x1="6" y1="6" x2="6.01" y2="6"></line>
+              <line x1="6" y1="18" x2="6.01" y2="18"></line>
+            </svg>
+          </div>
+          <div class="card-info">
+            <span class="card-label">Total Hosts</span>
+            <span class="card-value" id="stat-total">0</span>
+            <span class="card-meta">Targets Scanned</span>
+          </div>
+        </div>
+
+        <div class="summary-card card-active">
+          <div class="card-icon active-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          </div>
+          <div class="card-info">
+            <span class="card-label">Active Hosts</span>
+            <span class="card-value active-val" id="stat-active">0</span>
+            <span class="card-meta">Echo Reply Received</span>
+          </div>
+        </div>
+
+        <div class="summary-card card-inactive">
+          <div class="card-icon inactive-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+          </div>
+          <div class="card-info">
+            <span class="card-label">Inactive Hosts</span>
+            <span class="card-value inactive-val" id="stat-inactive">0</span>
+            <span class="card-meta">Request Timed Out</span>
+          </div>
+        </div>
+
+        <div class="summary-card card-time">
+          <div class="card-icon time-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+          <div class="card-info">
+            <span class="card-label">Scan Duration</span>
+            <span class="card-value" id="stat-duration">0.00s</span>
+            <span class="card-meta">Multi-threaded Sweep</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Results Table Section -->
+      <section class="card results-card" id="results-card">
+        <div class="results-header">
+          <div class="results-title-group">
+            <h2 class="results-title">Discovery Results</h2>
+            <span class="results-count" id="results-count">0 hosts detected</span>
+          </div>
+          <div class="results-actions">
+            <!-- Filter Controls -->
+            <div class="filter-group">
+              <button type="button" class="filter-btn active" data-filter="all">All (<span id="filter-all-count">0</span>)</button>
+              <button type="button" class="filter-btn" data-filter="Active">Active (<span id="filter-active-count">0</span>)</button>
+              <button type="button" class="filter-btn" data-filter="Inactive">Inactive (<span id="filter-inactive-count">0</span>)</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="table-responsive">
+          <table class="results-table" id="results-table">
+            <thead>
+              <tr>
+                <th style="width: 80px;">#</th>
+                <th>IP Address</th>
+                <th>Status</th>
+                <th>Latency / Response</th>
+                <th>Discovery Protocol</th>
+              </tr>
+            </thead>
+            <tbody id="results-tbody">
+              <tr class="empty-row">
+                <td colspan="5">
+                  <div class="empty-state">
+                    <div class="empty-icon">📡</div>
+                    <h4>No scan executed yet</h4>
+                    <p>Enter an IP range above and click <strong>Start Scan</strong> to begin host discovery.</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-left">
+        <span>Project 3: Network Security IP Range Scanner</span>
+        <span class="footer-divider">•</span>
+        <span>College Cybersecurity Assignment Prototype</span>
+      </div>
+      <div class="footer-right">
+        <span>Authorized Lab Testing Only</span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
